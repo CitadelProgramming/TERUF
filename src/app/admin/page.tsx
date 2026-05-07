@@ -1,14 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 type Donation = {
   id: string;
@@ -34,15 +27,41 @@ type SupportRequest = {
   created_at: string;
 };
 
+type GalleryItem = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  image_url: string;
+  date: string;
+  location: string;
+};
+
 export default function AdminPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [supportLoading, setSupportLoading] = useState(true);
+  const [galleryLoading, setGalleryLoading] = useState(true);
+
+  // Gallery Upload Form State
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    category: '',
+    date: '',
+    location: '',
+  });
+  const [image, setImage] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
     fetchDonations();
     fetchSupportRequests();
+    fetchGallery();
   }, []);
 
   const fetchDonations = async () => {
@@ -69,18 +88,66 @@ export default function AdminPage() {
     }
   };
 
-  // LOGOUT FUNCTION
+  const fetchGallery = async () => {
+    try {
+      const res = await fetch('/api/gallery');
+      const data = await res.json();
+      setGallery(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  // Gallery Upload Handler
+  const handleGalleryUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!image) {
+      setUploadMessage("Please select an image");
+      return;
+    }
+
+    setUploading(true);
+    setUploadMessage('');
+
+    const data = new FormData();
+    Object.entries(formData).forEach(([key, value]) => data.append(key, value));
+    data.append('image', image);
+
+    try {
+      const res = await fetch('/api/gallery/upload', {
+        method: 'POST',
+        body: data,
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setUploadMessage('✅ Gallery item uploaded successfully!');
+        setFormData({ title: '', description: '', category: '', date: '', location: '' });
+        setImage(null);
+        fetchGallery(); // Refresh gallery
+      } else {
+        setUploadMessage('❌ ' + (result.error || 'Upload failed'));
+      }
+    } catch (err) {
+      setUploadMessage('❌ Failed to upload image');
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login';
   };
 
-  // EXPORT CSV (donations only for now)
   const exportToCSV = () => {
     if (donations.length === 0) return;
-
+    // ... your existing CSV export code (untouched)
     const headers = ['Email', 'Amount', 'Project', 'Status', 'Date'];
-
     const rows = donations.map((d) => [
       d.email,
       d.amount,
@@ -89,16 +156,9 @@ export default function AdminPage() {
       new Date(d.created_at).toLocaleDateString(),
     ]);
 
-    const csvContent = [headers, ...rows]
-      .map((row) => row.join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], {
-      type: 'text/csv;charset=utf-8;',
-    });
-
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'donations.csv');
@@ -111,19 +171,12 @@ export default function AdminPage() {
 
   const chartData = Object.values(
     donations.reduce((acc: any, donation) => {
-      const date = new Date(donation.created_at).toLocaleDateString(
-        'en-US',
-        {
-          month: 'short',
-          day: 'numeric',
-        }
-      );
-
-      if (!acc[date]) {
-        acc[date] = { date, amount: 0 };
-      }
+      const date = new Date(donation.created_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+      if (!acc[date]) acc[date] = { date, amount: 0 };
       acc[date].amount += donation.amount;
-
       return acc;
     }, {})
   );
@@ -132,26 +185,115 @@ export default function AdminPage() {
     <div className="p-10 max-w-6xl mx-auto">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Admin Dashboard - TERUF</h1>
         <div className="flex gap-3">
           <button
             onClick={exportToCSV}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded"
           >
-            Export CSV
+            Export Donations CSV
           </button>
-
           <button
             onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+            className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded"
           >
             Logout
           </button>
         </div>
       </div>
 
+      {/* ==================== GALLERY UPLOAD SECTION ==================== */}
+      <div className="bg-white border rounded-xl p-8 mb-10">
+        <h2 className="text-2xl font-semibold mb-6">Add New Gallery Item</h2>
+
+        <form onSubmit={handleGalleryUpload} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium mb-2">Title</label>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full p-3 border rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Category</label>
+            <select
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full p-3 border rounded-lg"
+            >
+              <option value="">Select Category</option>
+              <option value="Outreaches">Outreaches</option>
+              <option value="School Programs">School Programs</option>
+              <option value="Counseling">Counseling</option>
+              <option value="Community Events">Community Events</option>
+              <option value="Advocacy">Advocacy</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <textarea
+              required
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full p-3 border rounded-lg h-24"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Date</label>
+            <input
+              type="date"
+              required
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="w-full p-3 border rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Location</label>
+            <input
+              type="text"
+              required
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              className="w-full p-3 border rounded-lg"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">Upload Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImage(e.target.files?.[0] || null)}
+              className="w-full p-3 border rounded-lg"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <button
+              type="submit"
+              disabled={uploading}
+              className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-medium disabled:opacity-50"
+            >
+              {uploading ? 'Uploading Image...' : 'Upload to Gallery'}
+            </button>
+          </div>
+
+          {uploadMessage && (
+            <p className="md:col-span-2 text-center font-medium">{uploadMessage}</p>
+          )}
+        </form>
+      </div>
+      {/* ==================== END GALLERY UPLOAD ==================== */}
       {/* STATS */}
       <div className="grid grid-cols-4 gap-6 mb-10">
 

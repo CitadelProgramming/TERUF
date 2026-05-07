@@ -9,9 +9,10 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { href: '/', label: 'Home' }, // ✅ ADDED HOME LINK
+    { href: '/', label: 'Home' },
     { href: '/about', label: 'About Us' },
     { href: '/programs', label: 'Programs' },
+    { href: '/gallery', label: 'Gallery' }, // ✅ ADDED GALLERY LINK
     { href: '/resources', label: 'Resources' },
     { href: '/support', label: 'Get Support' },
     { href: '/donate', label: 'Donate' },
