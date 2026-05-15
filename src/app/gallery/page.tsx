@@ -1,55 +1,58 @@
 // app/gallery/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { useState } from 'react';
 import { X, Calendar, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type GalleryItem = {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  image_url: string;
-  date: string;
-  location: string;
-};
+const galleryItems = [
+  {
+    id: 1,
+    title: "School Outreach Program",
+    category: "School Programs",
+    image: "https://picsum.photos/id/1015/800/600",
+    date: "March 12, 2026",
+    location: "Abuja Municipal Area",
+    description: "Over 450 students received comprehensive sexual and reproductive health education.",
+  },
+  {
+    id: 2,
+    title: "Free Counseling Session",
+    category: "Counseling",
+    image: "https://picsum.photos/id/1027/800/600",
+    date: "March 8, 2026",
+    location: "TERUF Center",
+    description: "Confidential counseling for young women and girls.",
+  },
+  {
+    id: 3,
+    title: "Community Sensitization",
+    category: "Outreaches",
+    image: "https://picsum.photos/id/106/800/600",
+    date: "February 28, 2026",
+    location: "Gwagwalada",
+    description: "Raising awareness on consent and reproductive health rights.",
+  },
+  {
+    id: 4,
+    title: "Youth Empowerment Workshop",
+    category: "Community Events",
+    image: "https://picsum.photos/id/201/800/600",
+    date: "February 15, 2026",
+    location: "Kubwa",
+    description: "Interactive session with over 200 youths.",
+  },
+];
 
 const categories = ['All', 'Outreaches', 'School Programs', 'Counseling', 'Community Events', 'Advocacy'];
 
 export default function GalleryPage() {
-  const [items, setItems] = useState<GalleryItem[]>([]);
   const [activeCategory, setActiveCategory] = useState('All');
-  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchGallery();
-  }, []);
-
-  const fetchGallery = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/gallery');
-      if (!res.ok) throw new Error('Failed to load');
-      const data = await res.json();
-      setItems(data);
-      setError('');
-    } catch (err) {
-      console.error(err);
-      setError('Failed to load gallery images');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [selectedImage, setSelectedImage] = useState<any>(null);
 
   const filteredItems = activeCategory === 'All' 
-    ? items 
-    : items.filter(item => item.category === activeCategory);
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-xl">Loading gallery...</div>;
+    ? galleryItems 
+    : galleryItems.filter(item => item.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -66,14 +69,14 @@ export default function GalleryPage() {
       {/* Filters */}
       <div className="sticky top-0 bg-white border-b z-40">
         <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 justify-center">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
                   activeCategory === cat 
-                    ? 'bg-primary text-white' 
+                    ? 'bg-primary text-white shadow-md' 
                     : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700'
                 }`}
               >
@@ -86,35 +89,30 @@ export default function GalleryPage() {
 
       {/* Gallery Grid */}
       <div className="max-w-6xl mx-auto px-6 py-16">
-        {error && <p className="text-red-600 text-center mb-8">{error}</p>}
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredItems.map((item) => (
             <motion.div
               key={item.id}
-              whileHover={{ y: -8 }}
+              whileHover={{ y: -10 }}
               className="group cursor-pointer"
               onClick={() => setSelectedImage(item)}
             >
-              <div className="relative overflow-hidden rounded-3xl aspect-[4/3] bg-neutral-200">
-                <Image
-                  src={item.image_url}
+              <div className="relative overflow-hidden rounded-3xl aspect-[4/3] shadow-md bg-neutral-200">
+                <img
+                  src={item.image}
                   alt={item.title}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
-
-              <div className="mt-4">
-                <div className="flex items-center gap-2 text-sm text-primary mb-2">
+              <div className="mt-5 px-1">
+                <div className="flex items-center gap-2 text-xs text-primary mb-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(item.date).toLocaleDateString()}</span>
-                  <MapPin className="w-4 h-4 ml-3" />
+                  <span>{item.date}</span>
+                  <MapPin className="w-4 h-4 ml-2" />
                   <span>{item.location}</span>
                 </div>
-                <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                <p className="text-neutral-600 line-clamp-2">{item.description}</p>
+                <h3 className="font-semibold text-xl mb-2">{item.title}</h3>
+                <p className="text-neutral-600 line-clamp-3">{item.description}</p>
               </div>
             </motion.div>
           ))}
@@ -124,30 +122,29 @@ export default function GalleryPage() {
       {/* Lightbox */}
       <AnimatePresence>
         {selectedImage && (
-          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative max-w-5xl w-full"
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-4xl w-full"
             >
               <button
                 onClick={() => setSelectedImage(null)}
-                className="absolute -top-12 right-4 text-white hover:text-red-500"
+                className="absolute -top-14 right-0 text-white hover:text-red-400"
               >
-                <X className="w-10 h-10" />
+                <X size={40} />
               </button>
 
               <div className="relative aspect-video bg-black rounded-2xl overflow-hidden">
-                <Image
-                  src={selectedImage.image_url}
+                <img
+                  src={selectedImage.image}
                   alt={selectedImage.title}
-                  fill
-                  className="object-contain"
+                  className="w-full h-full object-contain"
                 />
               </div>
 
-              <div className="bg-white p-8 rounded-b-2xl text-neutral-900">
+              <div className="bg-white p-8 rounded-b-2xl">
                 <h2 className="text-2xl font-bold mb-3">{selectedImage.title}</h2>
                 <p className="text-neutral-600">{selectedImage.description}</p>
               </div>
